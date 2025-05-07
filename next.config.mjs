@@ -41,16 +41,9 @@ const nextConfig = {
         os: false,
         constants: false,
         assert: false,
-        buffer: require.resolve("buffer/"),
-        events: require.resolve("events/"),
+        buffer: false, // Changed from require.resolve
+        events: false, // Changed from require.resolve
       }
-
-      // Add buffer polyfill
-      config.plugins.push(
-        new config.webpack.ProvidePlugin({
-          Buffer: ["buffer", "Buffer"],
-        })
-      )
 
       // Ignore all mongodb-related modules on the client
       config.module.rules.push({
