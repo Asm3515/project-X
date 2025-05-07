@@ -1,15 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Updated: moved from experimental.serverComponentsExternalPackages to serverExternalPackages
+  serverExternalPackages: ["mongodb", "@napi-rs/snappy", "mongodb-connection-string-url", "bson", "aws4"],
   experimental: {
-    serverComponentsExternalPackages: [
-      "mongodb",
-      "@napi-rs/snappy",
-      "mongodb-connection-string-url",
-      "bson",
-      "aws4",
-    ],
-    esmExternals: "loose",
+    // Removed esmExternals as it's not recommended
   },
   eslint: {
     ignoreDuringBuilds: true,
@@ -41,18 +36,18 @@ const nextConfig = {
         os: false,
         constants: false,
         assert: false,
-        buffer: false, // Changed from require.resolve
-        events: false, // Changed from require.resolve
+        buffer: false,
+        events: false,
       }
 
-      // Ignore all mongodb-related modules on the client
+      // Use a more direct approach to ignore MongoDB modules
       config.module.rules.push({
         test: /mongodb|@napi-rs\/snappy|bson|aws4|mongodb-connection-string-url/,
-        use: "null-loader",
+        use: "ignore-loader",
       })
     }
     return config
   },
 }
 
-export default nextConfig
+module.exports = nextConfig
