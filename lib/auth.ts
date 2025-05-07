@@ -1,9 +1,8 @@
 import type { NextAuthOptions } from "next-auth"
 import { MongoDBAdapter } from "@auth/mongodb-adapter"
-import GoogleProvider from "next-auth/providers/google"
 import CredentialsProvider from "next-auth/providers/credentials"
 import clientPromise from "./mongodb"
-import { getUserByEmail } from "./services/user-service"
+import { getUserByEmail, verifyPassword } from "./services/user-service"
 
 export const authOptions: NextAuthOptions = {
   adapter: MongoDBAdapter(clientPromise),
@@ -15,10 +14,6 @@ export const authOptions: NextAuthOptions = {
     error: "/api/auth/error",
   },
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
     CredentialsProvider({
       name: "Credentials",
       credentials: {
@@ -30,24 +25,31 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
-        const user = await getUserByEmail(credentials.email)
-        if (!user) {
+        try {
+          const user = await getUserByEmail(credentials.email)
+
+          if (!user) {
+            console.log("User not found:", credentials.email)
+            return null
+          }
+
+          // Verify password using bcrypt
+          const isValidPassword = await verifyPassword(user, credentials.password)
+
+          if (!isValidPassword) {
+            console.log("Invalid password for user:", credentials.email)
+            return null
+          }
+
+          return {
+            id: user._id.toString(),
+            name: user.name,
+            email: user.email,
+            image: user.image,
+          }
+        } catch (error) {
+          console.error("Error during authentication:", error)
           return null
-        }
-
-        // In a real app, you would check the password hash
-        // For demo purposes, we'll just check if the password is "password"
-        const isValidPassword = credentials.password === "password"
-
-        if (!isValidPassword) {
-          return null
-        }
-
-        return {
-          id: user._id.toString(),
-          name: user.name,
-          email: user.email,
-          image: user.image,
         }
       },
     }),
@@ -67,4 +69,5 @@ export const authOptions: NextAuthOptions = {
     },
   },
   secret: process.env.NEXTAUTH_SECRET,
+  debug: process.env.NODE_ENV === "development",
 }

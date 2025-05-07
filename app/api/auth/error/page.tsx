@@ -23,6 +23,9 @@ export default function AuthErrorPage() {
   } else if (error === "Verification") {
     errorMessage = "Verification error"
     errorDescription = "The verification link may have expired or already been used."
+  } else if (error === "CredentialsSignin") {
+    errorMessage = "Invalid credentials"
+    errorDescription = "The email or password you entered is incorrect."
   }
 
   return (
