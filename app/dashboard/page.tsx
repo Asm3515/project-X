@@ -47,13 +47,13 @@ export default function DashboardPage() {
 
         // Calculate average execution time
         const completedExecutions = executions.filter(
-          (execution: any) => execution.status === "Completed" && execution.metrics.duration,
+          (execution: any) => execution.status === "Completed" && execution.metrics?.duration,
         )
 
         let avgDuration = 0
         if (completedExecutions.length > 0) {
           const totalDuration = completedExecutions.reduce(
-            (sum: number, execution: any) => sum + execution.metrics.duration,
+            (sum: number, execution: any) => sum + (execution.metrics?.duration || 0),
             0,
           )
           avgDuration = totalDuration / completedExecutions.length

@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Textarea } from "@/components/ui/textarea"
 import { Play, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { useSession } from "next-auth/react"
 
 interface WorkflowExecutionProps {
   workflowId: string
@@ -18,11 +17,8 @@ export function WorkflowExecution({ workflowId, workflowName }: WorkflowExecutio
   const [output, setOutput] = useState("")
   const [isExecuting, setIsExecuting] = useState(false)
   const { toast } = useToast()
-  const { data: session } = useSession()
 
   const handleExecute = async () => {
-    if (!session?.user?.id) return
-
     if (!input.trim()) {
       toast({
         title: "Input required",

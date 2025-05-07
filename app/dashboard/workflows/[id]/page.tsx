@@ -19,8 +19,6 @@ import { useToast } from "@/hooks/use-toast"
 import type { Node, Edge } from "reactflow"
 import { Badge } from "@/components/ui/badge"
 import { WorkflowExecution } from "@/components/workflow-execution"
-import { fetchWorkflowById, saveWorkflow } from "@/lib/actions/workflow-actions"
-import { useSession } from "next-auth/react"
 
 export default function WorkflowDetailPage({ params }: { params: { id: string } }) {
   const [name, setName] = useState("")
@@ -33,7 +31,6 @@ export default function WorkflowDetailPage({ params }: { params: { id: string } 
   const [initialEdges, setInitialEdges] = useState<Edge[]>([])
   const [activeTab, setActiveTab] = useState("edit")
   const [loadError, setLoadError] = useState<string | null>(null)
-  const { data: session } = useSession()
 
   // Validate MongoDB ObjectId format
   const isValidObjectId = (id: string) => /^[0-9a-fA-F]{24}$/.test(id)
@@ -41,8 +38,6 @@ export default function WorkflowDetailPage({ params }: { params: { id: string } 
   // Fetch workflow data
   useEffect(() => {
     const fetchWorkflow = async () => {
-      if (!session?.user?.id) return
-
       setIsLoading(true)
       try {
         // Validate ID format first
@@ -52,15 +47,15 @@ export default function WorkflowDetailPage({ params }: { params: { id: string } 
           return
         }
 
-        const result = await fetchWorkflowById(params.id, session.user.id)
+        // Use the API route instead of direct server action
+        const response = await fetch(`/api/workflows/${params.id}`)
 
-        if (result.error) {
-          setLoadError(result.error)
-          setIsLoading(false)
-          return
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || "Failed to load workflow")
         }
 
-        const workflow = result.workflow
+        const workflow = await response.json()
 
         setName(workflow.name)
         setDescription(workflow.description)
@@ -113,14 +108,10 @@ export default function WorkflowDetailPage({ params }: { params: { id: string } 
       }
     }
 
-    if (session?.user?.id) {
-      fetchWorkflow()
-    }
-  }, [params.id, session, toast])
+    fetchWorkflow()
+  }, [params.id, toast])
 
   const handleSaveWorkflow = async (nodes: Node[], edges: Edge[]) => {
-    if (!session?.user?.id) return
-
     try {
       if (!isValidObjectId(params.id)) {
         toast({
@@ -131,21 +122,23 @@ export default function WorkflowDetailPage({ params }: { params: { id: string } 
         return
       }
 
-      const result = await saveWorkflow(params.id, session.user.id, {
-        name,
-        description,
-        status,
-        nodes,
-        edges,
+      const response = await fetch(`/api/workflows/${params.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          description,
+          status,
+          nodes,
+          edges,
+        }),
       })
 
-      if (result.error) {
-        toast({
-          title: "Error",
-          description: result.error,
-          variant: "destructive",
-        })
-        return
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to save workflow")
       }
 
       toast({

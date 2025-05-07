@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
-import { getWorkflowById } from "@/lib/services/workflow-service"
+import { getWorkflowById } from "@/lib/db/data-access"
 import { getUserById } from "@/lib/services/user-service"
 import { executeWorkflow } from "@/lib/ai/agent-executor"
 import { isValidObjectId } from "@/lib/utils"

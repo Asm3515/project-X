@@ -27,7 +27,7 @@ export function MetricsChart() {
           total: item.count,
           success: item.successCount,
           failure: item.failureCount,
-          avgDuration: Math.round(item.avgDuration / 1000), // Convert to seconds
+          avgDuration: Math.round((item.avgDuration || 0) / 1000), // Convert to seconds
           tokens: item.totalTokens,
         }))
 
