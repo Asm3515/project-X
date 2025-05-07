@@ -3,9 +3,6 @@ const nextConfig = {
   reactStrictMode: true,
   // Updated: moved from experimental.serverComponentsExternalPackages to serverExternalPackages
   serverExternalPackages: ["mongodb", "@napi-rs/snappy", "mongodb-connection-string-url", "bson", "aws4"],
-  experimental: {
-    // Removed esmExternals as it's not recommended
-  },
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -40,11 +37,15 @@ const nextConfig = {
         events: false,
       }
 
-      // Use a more direct approach to ignore MongoDB modules
-      config.module.rules.push({
-        test: /mongodb|@napi-rs\/snappy|bson|aws4|mongodb-connection-string-url/,
-        use: "ignore-loader",
-      })
+      // Create empty modules for MongoDB-related packages
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        mongodb: false,
+        "@napi-rs/snappy": false,
+        bson: false,
+        aws4: false,
+        "mongodb-connection-string-url": false,
+      }
     }
     return config
   },
