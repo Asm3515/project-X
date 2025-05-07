@@ -2,6 +2,7 @@ import { ObjectId } from "mongodb"
 import clientPromise from "../mongodb"
 import type { User, UserWithId } from "../models/user"
 import bcrypt from "bcryptjs"
+import { isValidObjectId } from "@/lib/utils"
 
 export async function getUserByEmail(email: string): Promise<UserWithId | null> {
   try {
@@ -16,6 +17,10 @@ export async function getUserByEmail(email: string): Promise<UserWithId | null> 
 
 export async function getUserById(id: string): Promise<UserWithId | null> {
   try {
+    if (!isValidObjectId(id)) {
+      return null
+    }
+
     const client = await clientPromise
     const collection = client.db("autoagentx").collection<User>("users")
     return collection.findOne({ _id: new ObjectId(id) }) as Promise<UserWithId | null>
@@ -57,6 +62,10 @@ export async function createUser(userData: Partial<User> & { password: string })
 
 export async function updateUser(id: string, update: Partial<User>): Promise<UserWithId | null> {
   try {
+    if (!isValidObjectId(id)) {
+      return null
+    }
+
     const client = await clientPromise
     const collection = client.db("autoagentx").collection<User>("users")
 
@@ -86,6 +95,10 @@ export async function updateUser(id: string, update: Partial<User>): Promise<Use
 
 export async function updateApiKeys(userId: string, apiKeys: Record<string, string>): Promise<UserWithId | null> {
   try {
+    if (!isValidObjectId(userId)) {
+      return null
+    }
+
     const client = await clientPromise
     const collection = client.db("autoagentx").collection<User>("users")
 

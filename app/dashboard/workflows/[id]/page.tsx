@@ -1,11 +1,8 @@
 "use client"
 
 import { CardDescription } from "@/components/ui/card"
-
 import { CardTitle } from "@/components/ui/card"
-
 import { CardHeader } from "@/components/ui/card"
-
 import { WorkflowEditor } from "@/components/workflow-editor"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -13,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Save, Play } from "lucide-react"
+import { ArrowLeft, Save, Play, AlertCircle } from "lucide-react"
 import Link from "next/link"
 import { DraggableNode } from "@/components/draggable-node"
 import { useState, useEffect } from "react"
@@ -30,15 +27,25 @@ export default function WorkflowDetailPage({ params }: { params: { id: string } 
   const [status, setStatus] = useState("Active")
   const router = useRouter()
   const { toast } = useToast()
-  const { fetchData, isLoading } = useApi()
+  const { fetchData, isLoading, error } = useApi()
   const [initialNodes, setInitialNodes] = useState<Node[]>([])
   const [initialEdges, setInitialEdges] = useState<Edge[]>([])
   const [activeTab, setActiveTab] = useState("edit")
+  const [loadError, setLoadError] = useState<string | null>(null)
+
+  // Validate MongoDB ObjectId format
+  const isValidObjectId = (id: string) => /^[0-9a-fA-F]{24}$/.test(id)
 
   // Fetch workflow data
   useEffect(() => {
     const fetchWorkflow = async () => {
       try {
+        // Validate ID format first
+        if (!isValidObjectId(params.id)) {
+          setLoadError("Invalid workflow ID format")
+          return
+        }
+
         const workflow = await fetchData(`/api/workflows/${params.id}`)
 
         setName(workflow.name)
@@ -81,6 +88,7 @@ export default function WorkflowDetailPage({ params }: { params: { id: string } 
         }
       } catch (error) {
         console.error("Error fetching workflow:", error)
+        setLoadError(error instanceof Error ? error.message : "Failed to load workflow")
         toast({
           title: "Error",
           description: "Failed to load workflow",
@@ -94,6 +102,15 @@ export default function WorkflowDetailPage({ params }: { params: { id: string } 
 
   const handleSaveWorkflow = async (nodes: Node[], edges: Edge[]) => {
     try {
+      if (!isValidObjectId(params.id)) {
+        toast({
+          title: "Error",
+          description: "Invalid workflow ID format",
+          variant: "destructive",
+        })
+        return
+      }
+
       await fetchData(`/api/workflows/${params.id}`, {
         method: "PUT",
         body: {
@@ -117,6 +134,30 @@ export default function WorkflowDetailPage({ params }: { params: { id: string } 
         variant: "destructive",
       })
     }
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-8rem)] p-6">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <div className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="h-5 w-5" />
+              <CardTitle>Error Loading Workflow</CardTitle>
+            </div>
+            <CardDescription>There was a problem loading this workflow</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">{loadError}</p>
+            <div className="flex justify-end">
+              <Link href="/dashboard/workflows">
+                <Button>Return to Workflows</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (

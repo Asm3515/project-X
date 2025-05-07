@@ -1,40 +1,64 @@
 import { ObjectId } from "mongodb"
 import clientPromise from "../mongodb"
 import type { Workflow, WorkflowWithId } from "../models/workflow"
+import { isValidObjectId } from "../utils"
 
 export async function getWorkflows(userId: string): Promise<WorkflowWithId[]> {
-  const client = await clientPromise
-  const collection = client.db("autoagentx").collection<Workflow>("workflows")
+  try {
+    if (!isValidObjectId(userId)) {
+      return []
+    }
 
-  return collection
-    .find({ userId: new ObjectId(userId) })
-    .sort({ updatedAt: -1 })
-    .toArray() as Promise<WorkflowWithId[]>
+    const client = await clientPromise
+    const collection = client.db("autoagentx").collection<Workflow>("workflows")
+
+    return collection
+      .find({ userId: new ObjectId(userId) })
+      .sort({ updatedAt: -1 })
+      .toArray() as Promise<WorkflowWithId[]>
+  } catch (error) {
+    console.error("Error getting workflows:", error)
+    return []
+  }
 }
 
 export async function getWorkflowById(id: string, userId: string): Promise<WorkflowWithId | null> {
-  const client = await clientPromise
-  const collection = client.db("autoagentx").collection<Workflow>("workflows")
+  try {
+    if (!isValidObjectId(id) || !isValidObjectId(userId)) {
+      return null
+    }
 
-  return collection.findOne({
-    _id: new ObjectId(id),
-    userId: new ObjectId(userId),
-  }) as Promise<WorkflowWithId | null>
+    const client = await clientPromise
+    const collection = client.db("autoagentx").collection<Workflow>("workflows")
+
+    return collection.findOne({
+      _id: new ObjectId(id),
+      userId: new ObjectId(userId),
+    }) as Promise<WorkflowWithId | null>
+  } catch (error) {
+    console.error("Error getting workflow by ID:", error)
+    return null
+  }
 }
 
 export async function createWorkflow(workflow: Workflow): Promise<WorkflowWithId> {
-  const client = await clientPromise
-  const collection = client.db("autoagentx").collection<Workflow>("workflows")
+  try {
+    const client = await clientPromise
+    const collection = client.db("autoagentx").collection<Workflow>("workflows")
 
-  const now = new Date()
-  const newWorkflow = {
-    ...workflow,
-    createdAt: now,
-    updatedAt: now,
+    const now = new Date()
+    const newWorkflow = {
+      ...workflow,
+      createdAt: now,
+      updatedAt: now,
+    }
+
+    const result = await collection.insertOne(newWorkflow)
+    return { ...newWorkflow, _id: result.insertedId }
+  } catch (error) {
+    console.error("Error creating workflow:", error)
+    throw error
   }
-
-  const result = await collection.insertOne(newWorkflow)
-  return { ...newWorkflow, _id: result.insertedId }
 }
 
 export async function updateWorkflow(
@@ -42,29 +66,47 @@ export async function updateWorkflow(
   userId: string,
   update: Partial<Workflow>,
 ): Promise<WorkflowWithId | null> {
-  const client = await clientPromise
-  const collection = client.db("autoagentx").collection<Workflow>("workflows")
+  try {
+    if (!isValidObjectId(id) || !isValidObjectId(userId)) {
+      return null
+    }
 
-  const result = await collection.findOneAndUpdate(
-    {
-      _id: new ObjectId(id),
-      userId: new ObjectId(userId),
-    },
-    { $set: { ...update, updatedAt: new Date() } },
-    { returnDocument: "after" },
-  )
+    const client = await clientPromise
+    const collection = client.db("autoagentx").collection<Workflow>("workflows")
 
-  return result as unknown as WorkflowWithId | null
+    const result = await collection.findOneAndUpdate(
+      {
+        _id: new ObjectId(id),
+        userId: new ObjectId(userId),
+      },
+      { $set: { ...update, updatedAt: new Date() } },
+      { returnDocument: "after" },
+    )
+
+    return result as unknown as WorkflowWithId | null
+  } catch (error) {
+    console.error("Error updating workflow:", error)
+    return null
+  }
 }
 
 export async function deleteWorkflow(id: string, userId: string): Promise<boolean> {
-  const client = await clientPromise
-  const collection = client.db("autoagentx").collection<Workflow>("workflows")
+  try {
+    if (!isValidObjectId(id) || !isValidObjectId(userId)) {
+      return false
+    }
 
-  const result = await collection.deleteOne({
-    _id: new ObjectId(id),
-    userId: new ObjectId(userId),
-  })
+    const client = await clientPromise
+    const collection = client.db("autoagentx").collection<Workflow>("workflows")
 
-  return result.deletedCount === 1
+    const result = await collection.deleteOne({
+      _id: new ObjectId(id),
+      userId: new ObjectId(userId),
+    })
+
+    return result.deletedCount === 1
+  } catch (error) {
+    console.error("Error deleting workflow:", error)
+    return false
+  }
 }

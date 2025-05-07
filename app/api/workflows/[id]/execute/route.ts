@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { getWorkflowById } from "@/lib/services/workflow-service"
 import { getUserById } from "@/lib/services/user-service"
 import { executeWorkflow } from "@/lib/ai/agent-executor"
+import { isValidObjectId } from "@/lib/utils"
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
@@ -11,6 +12,11 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    // Validate the ID format
+    if (!isValidObjectId(params.id)) {
+      return NextResponse.json({ error: "Invalid workflow ID format" }, { status: 400 })
     }
 
     const workflow = await getWorkflowById(params.id, session.user.id)

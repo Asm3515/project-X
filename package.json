@@ -77,8 +77,8 @@
     "uuid": "latest",
     "@ai-sdk/anthropic": "latest",
     "next-auth": "latest",
-    "bcryptjs": "latest",
-    "@auth/mongodb-adapter": "latest"
+    "@auth/mongodb-adapter": "latest",
+    "bcryptjs": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",

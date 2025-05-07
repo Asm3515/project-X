@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { getWorkflowById, updateWorkflow, deleteWorkflow } from "@/lib/services/workflow-service"
+import { isValidObjectId } from "@/lib/utils"
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
@@ -9,6 +10,11 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    // Validate the ID format
+    if (!isValidObjectId(params.id)) {
+      return NextResponse.json({ error: "Invalid workflow ID format" }, { status: 400 })
     }
 
     const workflow = await getWorkflowById(params.id, session.user.id)
@@ -32,6 +38,11 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    // Validate the ID format
+    if (!isValidObjectId(params.id)) {
+      return NextResponse.json({ error: "Invalid workflow ID format" }, { status: 400 })
+    }
+
     const data = await request.json()
 
     const workflow = await updateWorkflow(params.id, session.user.id, data)
@@ -53,6 +64,11 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
 
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    // Validate the ID format
+    if (!isValidObjectId(params.id)) {
+      return NextResponse.json({ error: "Invalid workflow ID format" }, { status: 400 })
     }
 
     const success = await deleteWorkflow(params.id, session.user.id)
