@@ -6,12 +6,16 @@ import { Plus, Bot, GitBranch, Play, Clock } from "lucide-react"
 import Link from "next/link"
 import { WorkflowList } from "@/components/workflow-list"
 import { useEffect, useState } from "react"
-import { useApi } from "@/hooks/use-api"
 import { MetricsChart } from "@/components/metrics-chart"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useSession } from "next-auth/react"
+import { fetchWorkflows } from "@/lib/actions/workflow-actions"
+import { fetchAgents } from "@/lib/actions/agent-actions"
+import { fetchExecutions } from "@/lib/actions/execution-actions"
 
 export default function DashboardPage() {
-  const { fetchData, isLoading } = useApi()
+  const { data: session } = useSession()
+  const [isLoading, setIsLoading] = useState(true)
   const [stats, setStats] = useState({
     totalWorkflows: 0,
     activeAgents: 0,
@@ -21,15 +25,17 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const loadDashboardData = async () => {
+      if (!session?.user?.id) return
+
       try {
-        // Fetch workflows
-        const workflows = await fetchData("/api/workflows")
+        setIsLoading(true)
 
-        // Fetch agents
-        const agents = await fetchData("/api/agents")
-
-        // Fetch recent executions
-        const executions = await fetchData("/api/executions?limit=50")
+        // Fetch data using server actions
+        const [workflows, agents, executions] = await Promise.all([
+          fetchWorkflows(session.user.id),
+          fetchAgents(session.user.id),
+          fetchExecutions(session.user.id, 50),
+        ])
 
         // Calculate stats
         const activeAgents = agents.filter((agent: any) => agent.status === "Active").length
@@ -73,11 +79,15 @@ export default function DashboardPage() {
         })
       } catch (error) {
         console.error("Failed to load dashboard data:", error)
+      } finally {
+        setIsLoading(false)
       }
     }
 
-    loadDashboardData()
-  }, [fetchData])
+    if (session?.user?.id) {
+      loadDashboardData()
+    }
+  }, [session])
 
   return (
     <div className="flex flex-col gap-8 p-8">

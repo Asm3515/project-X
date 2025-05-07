@@ -16,10 +16,11 @@ import { DraggableNode } from "@/components/draggable-node"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
-import { useApi } from "@/hooks/use-api"
 import type { Node, Edge } from "reactflow"
 import { Badge } from "@/components/ui/badge"
 import { WorkflowExecution } from "@/components/workflow-execution"
+import { fetchWorkflowById, saveWorkflow } from "@/lib/actions/workflow-actions"
+import { useSession } from "next-auth/react"
 
 export default function WorkflowDetailPage({ params }: { params: { id: string } }) {
   const [name, setName] = useState("")
@@ -27,11 +28,12 @@ export default function WorkflowDetailPage({ params }: { params: { id: string } 
   const [status, setStatus] = useState("Active")
   const router = useRouter()
   const { toast } = useToast()
-  const { fetchData, isLoading, error } = useApi()
+  const [isLoading, setIsLoading] = useState(true)
   const [initialNodes, setInitialNodes] = useState<Node[]>([])
   const [initialEdges, setInitialEdges] = useState<Edge[]>([])
   const [activeTab, setActiveTab] = useState("edit")
   const [loadError, setLoadError] = useState<string | null>(null)
+  const { data: session } = useSession()
 
   // Validate MongoDB ObjectId format
   const isValidObjectId = (id: string) => /^[0-9a-fA-F]{24}$/.test(id)
@@ -39,14 +41,26 @@ export default function WorkflowDetailPage({ params }: { params: { id: string } 
   // Fetch workflow data
   useEffect(() => {
     const fetchWorkflow = async () => {
+      if (!session?.user?.id) return
+
+      setIsLoading(true)
       try {
         // Validate ID format first
         if (!isValidObjectId(params.id)) {
           setLoadError("Invalid workflow ID format")
+          setIsLoading(false)
           return
         }
 
-        const workflow = await fetchData(`/api/workflows/${params.id}`)
+        const result = await fetchWorkflowById(params.id, session.user.id)
+
+        if (result.error) {
+          setLoadError(result.error)
+          setIsLoading(false)
+          return
+        }
+
+        const workflow = result.workflow
 
         setName(workflow.name)
         setDescription(workflow.description)
@@ -94,13 +108,19 @@ export default function WorkflowDetailPage({ params }: { params: { id: string } 
           description: "Failed to load workflow",
           variant: "destructive",
         })
+      } finally {
+        setIsLoading(false)
       }
     }
 
-    fetchWorkflow()
-  }, [fetchData, params.id, toast])
+    if (session?.user?.id) {
+      fetchWorkflow()
+    }
+  }, [params.id, session, toast])
 
   const handleSaveWorkflow = async (nodes: Node[], edges: Edge[]) => {
+    if (!session?.user?.id) return
+
     try {
       if (!isValidObjectId(params.id)) {
         toast({
@@ -111,16 +131,22 @@ export default function WorkflowDetailPage({ params }: { params: { id: string } 
         return
       }
 
-      await fetchData(`/api/workflows/${params.id}`, {
-        method: "PUT",
-        body: {
-          name,
-          description,
-          status,
-          nodes,
-          edges,
-        },
+      const result = await saveWorkflow(params.id, session.user.id, {
+        name,
+        description,
+        status,
+        nodes,
+        edges,
       })
+
+      if (result.error) {
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        })
+        return
+      }
 
       toast({
         title: "Workflow saved",
@@ -154,6 +180,22 @@ export default function WorkflowDetailPage({ params }: { params: { id: string } 
                 <Button>Return to Workflows</Button>
               </Link>
             </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-8rem)] p-6">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Loading Workflow</CardTitle>
+            <CardDescription>Please wait while we load your workflow</CardDescription>
+          </CardHeader>
+          <CardContent className="flex justify-center py-6">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
           </CardContent>
         </Card>
       </div>
@@ -358,22 +400,9 @@ export default function WorkflowDetailPage({ params }: { params: { id: string } 
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {isLoading ? (
-                    Array.from({ length: 3 }).map((_, i) => (
-                      <div key={i} className="flex items-center gap-4 rounded-lg border p-3">
-                        <div className="h-2 w-2 rounded-full bg-gray-300" />
-                        <div className="flex-1 space-y-1">
-                          <div className="h-4 w-32 rounded bg-gray-200" />
-                          <div className="h-3 w-24 rounded bg-gray-200" />
-                        </div>
-                        <div className="h-3 w-16 rounded bg-gray-200" />
-                      </div>
-                    ))
-                  ) : (
-                    <div className="flex h-40 items-center justify-center text-center text-sm text-muted-foreground">
-                      <p>Execute the workflow to see execution history</p>
-                    </div>
-                  )}
+                  <div className="flex h-40 items-center justify-center text-center text-sm text-muted-foreground">
+                    <p>Execute the workflow to see execution history</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>

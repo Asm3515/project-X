@@ -2,18 +2,24 @@
 
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useApi } from "@/hooks/use-api"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts"
 import { Skeleton } from "@/components/ui/skeleton"
+import { fetchExecutionMetrics } from "@/lib/actions/execution-actions"
+import { useSession } from "next-auth/react"
 
 export function MetricsChart() {
-  const { fetchData, isLoading, error } = useApi()
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<Error | null>(null)
   const [metrics, setMetrics] = useState<any[]>([])
+  const { data: session } = useSession()
 
   useEffect(() => {
     const loadMetrics = async () => {
+      if (!session?.user?.id) return
+
       try {
-        const data = await fetchData("/api/executions/metrics")
+        setIsLoading(true)
+        const data = await fetchExecutionMetrics(session.user.id)
 
         // Transform the data for the chart
         const formattedData = data.map((item: any) => ({
@@ -28,11 +34,16 @@ export function MetricsChart() {
         setMetrics(formattedData)
       } catch (error) {
         console.error("Failed to load metrics:", error)
+        setError(error instanceof Error ? error : new Error("Failed to load metrics"))
+      } finally {
+        setIsLoading(false)
       }
     }
 
-    loadMetrics()
-  }, [fetchData])
+    if (session?.user?.id) {
+      loadMetrics()
+    }
+  }, [session])
 
   if (isLoading) {
     return (

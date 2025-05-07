@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { Play, Loader2 } from "lucide-react"
-import { useApi } from "@/hooks/use-api"
 import { useToast } from "@/hooks/use-toast"
+import { useSession } from "next-auth/react"
 
 interface WorkflowExecutionProps {
   workflowId: string
@@ -17,10 +17,12 @@ export function WorkflowExecution({ workflowId, workflowName }: WorkflowExecutio
   const [input, setInput] = useState("")
   const [output, setOutput] = useState("")
   const [isExecuting, setIsExecuting] = useState(false)
-  const { fetchData } = useApi()
   const { toast } = useToast()
+  const { data: session } = useSession()
 
   const handleExecute = async () => {
+    if (!session?.user?.id) return
+
     if (!input.trim()) {
       toast({
         title: "Input required",
@@ -34,11 +36,21 @@ export function WorkflowExecution({ workflowId, workflowName }: WorkflowExecutio
     setOutput("")
 
     try {
-      const result = await fetchData(`/api/workflows/${workflowId}/execute`, {
+      // Use the API route instead of direct server action to avoid bundling MongoDB in client
+      const response = await fetch(`/api/workflows/${workflowId}/execute`, {
         method: "POST",
-        body: { input },
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ input }),
       })
 
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to execute workflow")
+      }
+
+      const result = await response.json()
       setOutput(result.output || "Execution completed successfully")
 
       toast({
